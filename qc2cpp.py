@@ -117,7 +117,7 @@ def emit(instructions, qubit2num_dict, clbit2num_dict, indent: str = ""):
                         neg_ctrl_qubit_num_list.append(ctrl_qubit_num)
 
             args = [str(param) for param in gate.params]
-            args.append(f"{{{target_qubit_num}}}")
+            args.append(str(target_qubit_num))
             args.append(
                 f"{{{', '.join(str(num) for num in neg_ctrl_qubit_num_list)}}}"
             )

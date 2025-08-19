@@ -45,16 +45,16 @@ Output:
 ```c++
 sim.set_num_qubits(14);
 sim.set_num_clbits(14);
-sim.gate_x({0}, {}, {});
-sim.gate_x({3}, {}, {0});
-sim.gate_x({2}, {}, {0, 1});
-sim.gate_x({0}, {}, {1, 2, 3, 4, 5});
-sim.gate_x({4}, {0}, {0, 1});
-sim.gate_h({0}, {}, {});
-sim.gate_h({1}, {}, {0});
-sim.gate_h({13}, {}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12});
-sim.gate_p(1.0, {0}, {}, {});
-sim.gate_u(1.0, 2.0, 3.0, {0}, {}, {});
+sim.gate_x(0, {}, {});
+sim.gate_x(3, {}, {0});
+sim.gate_x(2, {}, {0, 1});
+sim.gate_x(0, {}, {1, 2, 3, 4, 5});
+sim.gate_x(4, {0}, {0, 1});
+sim.gate_h(0, {}, {});
+sim.gate_h(1, {}, {0});
+sim.gate_h(13, {}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12});
+sim.gate_p(1.0, 0, {}, {});
+sim.gate_u(1.0, 2.0, 3.0, 0, {}, {});
 sim.measure({2}, {1});
 sim.measure({3}, {0});
 ```
@@ -85,21 +85,21 @@ qc.measure(0, 0)
 ```c++
 sim.set_num_qubits(1);
 sim.set_num_clbits(1);
-sim.gate_x({0}, {}, {});
+sim.gate_x(0, {}, {});
 if (sim.read(0) == 1) {
-    sim.gate_x({0}, {}, {});
+    sim.gate_x(0, {}, {});
 }
 while (sim.read(0) == 0) {
-    sim.gate_x({0}, {}, {});
+    sim.gate_x(0, {}, {});
 }
 for (int _loop_i_0 : {1, 3, 4, 9}) {
-    sim.gate_rx(_loop_i_0, {0}, {}, {});
+    sim.gate_rx(_loop_i_0, 0, {}, {});
 }
 for (int _loop_i_1 : {1, 3, 4, 9}) {
-    sim.gate_ry(_loop_i_1, {0}, {}, {});
+    sim.gate_ry(_loop_i_1, 0, {}, {});
 }
 for (int _loop_i_2 = 0; _loop_i_2 < 10; _loop_i_2 += 2) {
-    sim.gate_rz(_loop_i_2, {0}, {}, {});
+    sim.gate_rz(_loop_i_2, 0, {}, {});
 }
 sim.measure({0}, {0});
 ```
