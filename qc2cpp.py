@@ -10,7 +10,10 @@ The generated C++ code is printed to standard output.
 
 import argparse
 import runpy
-from typing import Iterable, Tuple, Dict
+from typing import Dict, Iterable, Tuple
+
+from qiskit.circuit import ClassicalRegister
+from qiskit.circuit.controlflow import ForLoopOp, IfElseOp, WhileLoopOp
 
 
 def pack_registers(registers_list: Iterable) -> Tuple[Dict, list]:
@@ -50,6 +53,8 @@ def circuit_to_cpp(qc) -> None:
         for clbit in gate.clbits:
             classical_registers_set.add(clbit._register)
 
+    # ``QuantumCircuit`` tracks registers for nested control-flow blocks, so
+    # this collection covers all qubits and clbits used anywhere in ``qc``.
     quantum_registers_list = tuple(quantum_registers_set)
     classical_registers_list = tuple(classical_registers_set)
 
@@ -61,33 +66,71 @@ def circuit_to_cpp(qc) -> None:
     num_clbits = len(num2clbit_list)
     print(f"sim.set_num_clbits({num_clbits});")
 
-    for gate in qc.data:
-        qubit_num_list = tuple(qubit2num_dict[qubit] for qubit in gate.qubits)
-        clbit_num_list = tuple(clbit2num_dict[clbit] for clbit in gate.clbits)
-        if gate.operation.name == "measure":
-            print(
-                f"sim.measure({{{','.join(str(qubit_num) for qubit_num in qubit_num_list)}}}, "
-                f"{{{','.join(str(clbit_num) for clbit_num in clbit_num_list)}}});"
-            )
+    def condition_to_cpp(condition) -> str:
+        bits, value = condition
+        bits_list = bits if isinstance(bits, ClassicalRegister) else [bits]
+        bit_nums = [clbit2num_dict[b] for b in bits_list]
+        if len(bit_nums) == 1:
+            bit_expr = f"sim.read({bit_nums[0]})"
         else:
-            base_gate_name = get_base_gate_name(gate.operation)
-            ctrl_qubit_num_list = qubit_num_list[:-1]
-            target_qubit_num = qubit_num_list[-1]
+            bit_expr = f"sim.read({{{', '.join(str(bn) for bn in bit_nums)}}})"
+        return f"{bit_expr} == {value}"
 
-            ctrl_state = getattr(gate.operation, "ctrl_state", None)
-            neg_ctrl_qubit_num_list = []
-            if ctrl_state is not None:
-                for i, ctrl_qubit_num in enumerate(ctrl_qubit_num_list):
-                    if not (ctrl_state >> i) & 1:
-                        neg_ctrl_qubit_num_list.append(ctrl_qubit_num)
+    def emit(instructions, indent: str = ""):
+        for gate in instructions:
+            op = gate.operation
+            qubit_num_list = tuple(qubit2num_dict[q] for q in gate.qubits)
+            clbit_num_list = tuple(clbit2num_dict[c] for c in gate.clbits)
 
-            args = [str(param) for param in gate.params]
-            args.append(f"{{{target_qubit_num}}}")
-            args.append(f"{{{', '.join(str(ctrl_qubit_num) for ctrl_qubit_num in ctrl_qubit_num_list)}}}")
-            args.append(f"{{{', '.join(str(num) for num in neg_ctrl_qubit_num_list)}}}")
-            args_str = ", ".join(args)
+            if op.name == "measure":
+                print(
+                    indent
+                    + f"sim.measure({{{','.join(str(n) for n in qubit_num_list)}}}, "
+                    + f"{{{','.join(str(n) for n in clbit_num_list)}}});"
+                )
+            elif isinstance(op, IfElseOp):
+                cond = condition_to_cpp(op.condition)
+                print(f"{indent}if ({cond}) {{")
+                emit(op.blocks[0].data, indent + "    ")
+                if len(op.blocks) > 1 and op.blocks[1] is not None:
+                    print(f"{indent}}} else {{")
+                    emit(op.blocks[1].data, indent + "    ")
+                print(f"{indent}}}")
+            elif isinstance(op, WhileLoopOp):
+                cond = condition_to_cpp(op.condition)
+                print(f"{indent}while ({cond}) {{")
+                emit(op.blocks[0].data, indent + "    ")
+                print(f"{indent}}}")
+            elif isinstance(op, ForLoopOp):
+                count = len(op.params[0])
+                print(f"{indent}for (int _ = 0; _ < {count}; ++_) {{")
+                emit(op.blocks[0].data, indent + "    ")
+                print(f"{indent}}}")
+            else:
+                base_gate_name = get_base_gate_name(op)
+                ctrl_qubit_num_list = qubit_num_list[:-1]
+                target_qubit_num = qubit_num_list[-1]
 
-            print(f"sim.gate_{base_gate_name}({args_str});")
+                ctrl_state = getattr(op, "ctrl_state", None)
+                neg_ctrl_qubit_num_list = []
+                if ctrl_state is not None:
+                    for i, ctrl_qubit_num in enumerate(ctrl_qubit_num_list):
+                        if not (ctrl_state >> i) & 1:
+                            neg_ctrl_qubit_num_list.append(ctrl_qubit_num)
+
+                args = [str(param) for param in gate.params]
+                args.append(f"{{{target_qubit_num}}}")
+                args.append(
+                    f"{{{', '.join(str(num) for num in ctrl_qubit_num_list)}}}"
+                )
+                args.append(
+                    f"{{{', '.join(str(num) for num in neg_ctrl_qubit_num_list)}}}"
+                )
+                args_str = ", ".join(args)
+
+                print(f"{indent}sim.gate_{base_gate_name}({args_str});")
+
+    emit(qc.data)
 
 
 def load_circuit(path: str):
@@ -113,4 +156,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
