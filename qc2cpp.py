@@ -102,14 +102,36 @@ def circuit_to_cpp(qc) -> None:
                 emit(op.blocks[0].data, indent + "    ")
                 print(f"{indent}}}")
             elif isinstance(op, ForLoopOp):
-                count = len(op.params[0])
+                sequence = op.params[0]
                 loop_parameter = op.params[1]
                 loop_var = (
                     loop_parameter.name if loop_parameter is not None else "loop_num"
                 )
-                print(
-                    f"{indent}for (int {loop_var} = 0; {loop_var} < {count}; ++{loop_var}) {{"
-                )
+
+                if isinstance(sequence, range):
+                    start = sequence.start
+                    stop = sequence.stop
+                    step = sequence.step
+                    cond = (
+                        f"{loop_var} < {stop}" if step > 0 else f"{loop_var} > {stop}"
+                    )
+                    increment = (
+                        f"{loop_var} += {step}"
+                        if step not in (1, -1)
+                        else (f"++{loop_var}" if step == 1 else f"--{loop_var}")
+                    )
+                    print(
+                        f"{indent}for (int {loop_var} = {start}; {cond}; {increment}) {{"
+                    )
+                elif isinstance(sequence, (list, tuple)):
+                    values = ", ".join(str(x) for x in sequence)
+                    print(f"{indent}for (int {loop_var} : {{{values}}}) {{")
+                else:
+                    count = len(sequence)
+                    print(
+                        f"{indent}for (int {loop_var} = 0; {loop_var} < {count}; ++{loop_var}) {{",
+                    )
+
                 emit(op.blocks[0].data, indent + "    ")
                 print(f"{indent}}}")
             else:
