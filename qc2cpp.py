@@ -70,7 +70,7 @@ def circuit_to_cpp(qc) -> None:
                 f"{{{','.join(str(clbit_num) for clbit_num in clbit_num_list)}}});"
             )
         else:
-            no_ctrl_gate_name = get_base_gate_name(gate.operation)
+            base_gate_name = get_base_gate_name(gate.operation)
             ctrl_qubit_num_list = qubit_num_list[:-1]
             target_qubit_num = qubit_num_list[-1]
 
@@ -81,11 +81,13 @@ def circuit_to_cpp(qc) -> None:
                     if not (ctrl_state >> i) & 1:
                         neg_ctrl_qubit_num_list.append(ctrl_qubit_num)
 
-            print(
-                f"sim.gate_{no_ctrl_gate_name}({{{target_qubit_num}}}, "
-                f"{{{','.join(str(ctrl_qubit_num) for ctrl_qubit_num in ctrl_qubit_num_list)}}}, "
-                f"{{{','.join(str(num) for num in neg_ctrl_qubit_num_list)}}});"
-            )
+            args = [str(param) for param in gate.params]
+            args.append(f"{{{target_qubit_num}}}")
+            args.append(f"{{{', '.join(str(ctrl_qubit_num) for ctrl_qubit_num in ctrl_qubit_num_list)}}}")
+            args.append(f"{{{', '.join(str(num) for num in neg_ctrl_qubit_num_list)}}}")
+            args_str = ", ".join(args)
+
+            print(f"sim.gate_{base_gate_name}({args_str});")
 
 
 def load_circuit(path: str):
