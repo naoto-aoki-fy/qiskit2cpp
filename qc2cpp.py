@@ -15,23 +15,17 @@ from typing import Dict, Iterable, Tuple
 from qiskit.circuit import ClassicalRegister
 from qiskit.circuit.controlflow import ForLoopOp, IfElseOp, WhileLoopOp
 
-
-def pack_registers(registers_list: Iterable) -> Tuple[Dict, list]:
-    """Pack quantum or classical registers into sequential numbers."""
+def pack_xbits(xbits_list: Iterable) -> Tuple[Dict, list]:
+    """Pack quantum or classical bits into sequential numbers."""
 
     xbit2num_dict: Dict = {}
     num2xbit_list = []
 
-    xbit_num = 0
-    for register in registers_list:
-        for xbit in register:
-            xbit2num_dict[xbit] = xbit_num
-            assert len(num2xbit_list) == xbit_num
-            num2xbit_list.append(xbit)
-            xbit_num += 1
+    for xbit_num, xbit in enumerate(xbits_list):
+        xbit2num_dict[xbit] = xbit_num
+        num2xbit_list.append(xbit)
 
     return xbit2num_dict, num2xbit_list
-
 
 def get_base_gate_name(operation) -> str:
     """Return the base gate name of an operation by inspecting its type."""
@@ -44,22 +38,10 @@ def get_base_gate_name(operation) -> str:
 def circuit_to_cpp(qc) -> None:
     """Print a C++ representation of ``qc`` to ``stdout``."""
 
-    quantum_registers_set = set()
-    classical_registers_set = set()
-
-    for gate in qc.data:
-        for qubit in gate.qubits:
-            quantum_registers_set.add(qubit._register)
-        for clbit in gate.clbits:
-            classical_registers_set.add(clbit._register)
-
     # ``QuantumCircuit`` tracks registers for nested control-flow blocks, so
     # this collection covers all qubits and clbits used anywhere in ``qc``.
-    quantum_registers_list = tuple(quantum_registers_set)
-    classical_registers_list = tuple(classical_registers_set)
-
-    qubit2num_dict, num2qubit_list = pack_registers(quantum_registers_list)
-    clbit2num_dict, num2clbit_list = pack_registers(classical_registers_list)
+    qubit2num_dict, num2qubit_list = pack_xbits(qc.qubits)
+    clbit2num_dict, num2clbit_list = pack_xbits(qc.clbits)
 
     num_qubits = len(num2qubit_list)
     print(f"sim.set_num_qubits({num_qubits});")
