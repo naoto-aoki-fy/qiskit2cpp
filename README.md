@@ -6,7 +6,7 @@ exposes a variable named ``qc`` and pass that file to the converter.
 
 ## Example
 
-### `example_circuit.py`
+### `examples/example_circuit.py`
 
 ```python
 from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit
@@ -37,7 +37,7 @@ qc.measure(q[3], c[0])
 Run the converter:
 
 ```bash
-python qc2cpp.py example_circuit.py
+python qc2cpp.py examples/example_circuit.py
 ```
 
 Output:
@@ -61,7 +61,7 @@ sim.measure({3}, {0});
 
 The third argument of each gate lists the control qubit indices that must be 0.
 
-### `example_control_flow.py`
+### `examples/example_control_flow.py`
 
 ```python
 from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
