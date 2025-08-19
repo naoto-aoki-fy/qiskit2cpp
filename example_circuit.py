@@ -16,6 +16,9 @@ qc.h(q[0])
 qc.ch(q[0], q[1])
 qc.append(HGate().control(13), q)
 
+qc.p(1.0, q[0])
+qc.u(1.0, 2.0, 3.0, q[0])
+
 qc.measure(q[2], c[1])
 qc.measure(q[3], c[0])
 
