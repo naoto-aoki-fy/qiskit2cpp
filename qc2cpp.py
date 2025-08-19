@@ -57,9 +57,9 @@ def circuit_to_cpp(qc) -> None:
     clbit2num_dict, num2clbit_list = pack_registers(classical_registers_list)
 
     num_qubits = len(num2qubit_list)
-    print(f"set_num_qubits({num_qubits});")
+    print(f"sim.set_num_qubits({num_qubits});")
     num_clbits = len(num2clbit_list)
-    print(f"set_num_clbits({num_clbits});")
+    print(f"sim.set_num_clbits({num_clbits});")
 
     for gate in qc.data:
         qubit_num_list = tuple(qubit2num_dict[qubit] for qubit in gate.qubits)
