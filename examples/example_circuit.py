@@ -1,17 +1,9 @@
 from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit
 from qiskit.circuit.library import HGate, XGate
 
-q0 = QuantumRegister(7)
-q1 = QuantumRegister(7)
+q = QuantumRegister(14)
 c = ClassicalRegister(14)
-qc = QuantumCircuit(q0, q1, c)
-
-q = []
-for i in range(7):
-    q.append(q0[i])
-for i in range(7):
-    q.append(q1[i])
-    qc.clbits
+qc = QuantumCircuit(q, c)
 
 qc.x(q[0])
 qc.cx(q[0], q[3])
