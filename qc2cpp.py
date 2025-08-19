@@ -30,10 +30,12 @@ def pack_registers(registers_list: Iterable) -> Tuple[Dict, list]:
     return xbit2num_dict, num2xbit_list
 
 
-def get_base_gate_name(s: str) -> str:
-    import re
-
-    return re.sub(r"^(?:mc|cc|c\d*)|_o\d+$", "", s)
+def get_base_gate_name(operation) -> str:
+    """Return the base gate name of an operation by inspecting its type."""
+    base_gate = operation
+    while hasattr(base_gate, "base_gate"):
+        base_gate = base_gate.base_gate
+    return base_gate.name
 
 
 def circuit_to_cpp(qc) -> None:
@@ -68,7 +70,7 @@ def circuit_to_cpp(qc) -> None:
                 f"{{{','.join(str(clbit_num) for clbit_num in clbit_num_list)}}});"
             )
         else:
-            no_ctrl_gate_name = get_base_gate_name(gate.operation.name)
+            no_ctrl_gate_name = get_base_gate_name(gate.operation)
             ctrl_qubit_num_list = qubit_num_list[:-1]
             target_qubit_num = qubit_num_list[-1]
 
