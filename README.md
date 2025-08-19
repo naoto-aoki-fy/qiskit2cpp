@@ -46,20 +46,18 @@ Output:
 sim.set_num_qubits(14);
 sim.set_num_clbits(14);
 sim.gate_x({0}, {}, {});
-sim.gate_x({3}, {0}, {});
-sim.gate_x({2}, {0, 1}, {});
-sim.gate_x({0}, {1, 2, 3, 4, 5}, {});
-sim.gate_x({4}, {0, 1}, {0});
+sim.gate_x({3}, {}, {0});
+sim.gate_x({2}, {}, {0, 1});
+sim.gate_x({0}, {}, {1, 2, 3, 4, 5});
+sim.gate_x({4}, {0}, {0, 1});
 sim.gate_h({0}, {}, {});
-sim.gate_h({1}, {0}, {});
-sim.gate_h({13}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}, {});
+sim.gate_h({1}, {}, {0});
+sim.gate_h({13}, {}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12});
 sim.gate_p(1.0, {0}, {}, {});
 sim.gate_u(1.0, 2.0, 3.0, {0}, {}, {});
 sim.measure({2}, {1});
 sim.measure({3}, {0});
 ```
-
-The third argument of each gate lists the control qubit indices that must be 0.
 
 ### `examples/example_control_flow.py`
 
