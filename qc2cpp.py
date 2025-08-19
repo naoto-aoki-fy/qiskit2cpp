@@ -103,7 +103,7 @@ def circuit_to_cpp(qc) -> None:
                 print(f"{indent}}}")
             elif isinstance(op, ForLoopOp):
                 count = len(op.params[0])
-                print(f"{indent}for (int _ = 0; _ < {count}; ++_) {{")
+                print(f"{indent}for (int loop_num = 0; loop_num < {count}; ++loop_num) {{")
                 emit(op.blocks[0].data, indent + "    ")
                 print(f"{indent}}}")
             else:
