@@ -106,14 +106,17 @@ def emit(instructions, qubit2num_dict, clbit2num_dict, indent: str = ""):
             print(f"{indent}}}")
         else:
             base_gate_name = get_base_gate_name(op)
-            ctrl_qubit_num_list = qubit_num_list[:-1]
+            both_ctrl_qubit_num_list = qubit_num_list[:-1]
             target_qubit_num = qubit_num_list[-1]
 
             ctrl_state = getattr(op, "ctrl_state", None)
             neg_ctrl_qubit_num_list = []
+            ctrl_qubit_num_list = []
             if ctrl_state is not None:
-                for i, ctrl_qubit_num in enumerate(ctrl_qubit_num_list):
-                    if not (ctrl_state >> i) & 1:
+                for i, ctrl_qubit_num in enumerate(both_ctrl_qubit_num_list):
+                    if (ctrl_state >> i) & 1:
+                        ctrl_qubit_num_list.append(ctrl_qubit_num)
+                    else:
                         neg_ctrl_qubit_num_list.append(ctrl_qubit_num)
 
             args = [str(param) for param in gate.params]

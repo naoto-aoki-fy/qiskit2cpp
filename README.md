@@ -21,7 +21,7 @@ qc.cx(q[0], q[3])
 qc.ccx(q[0], q[1], q[2])
 qc.mcx(q[1:6], q[0])
 
-qc.append(XGate().control(2, ctrl_state=0b10), [q[0], q[1], q[4]])
+qc.append(XGate().control(2, ctrl_state=0b00), [q[0], q[1], q[4]])
 
 qc.h(q[0])
 qc.ch(q[0], q[1])
@@ -49,7 +49,7 @@ sim.gate_x(0, {}, {});
 sim.gate_x(3, {}, {0});
 sim.gate_x(2, {}, {0, 1});
 sim.gate_x(0, {}, {1, 2, 3, 4, 5});
-sim.gate_x(4, {0}, {0, 1});
+sim.gate_x(4, {0, 1}, {});
 sim.gate_h(0, {}, {});
 sim.gate_h(1, {}, {0});
 sim.gate_h(13, {}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12});

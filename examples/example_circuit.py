@@ -10,7 +10,7 @@ qc.cx(q[0], q[3])
 qc.ccx(q[0], q[1], q[2])
 qc.mcx(q[1:6], q[0])
 
-qc.append(XGate().control(2, ctrl_state=0b10), [q[0], q[1], q[4]])
+qc.append(XGate().control(2, ctrl_state=0b00), [q[0], q[1], q[4]])
 
 qc.h(q[0])
 qc.ch(q[0], q[1])
