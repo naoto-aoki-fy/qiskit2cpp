@@ -68,38 +68,36 @@ q = QuantumRegister(1)
 c = ClassicalRegister(1)
 qc = QuantumCircuit(q, c)
 
-qc.x(0)
-with qc.if_test((c[0], 1)):
-    qc.x(0)
-with qc.while_loop((c[0], 0)):
-    qc.x(0)
 with qc.for_loop([1, 3, 4, 9]) as i:
     qc.rx(i, 0)
-with qc.for_loop((1, 3, 4, 9)) as j:
-    qc.ry(j, 0)
-with qc.for_loop(range(0, 10, 2)) as k:
-    qc.rz(k, 0)
+
+    with qc.for_loop((1, 3, 4, 9)) as j:
+        qc.ry(j, 0)
+
+        with qc.for_loop(range(0, 10, 2)) as k:
+            qc.rz(k, 0)
+
 qc.measure(0, 0)
+with qc.while_loop((c[0], 0)):
+    qc.x(0)
+    qc.measure(0, 0)
 ```
 
 ```c++
 sim.set_num_qubits(1);
 sim.set_num_clbits(1);
-sim.gate_x(0, {}, {});
-if (sim.read(0) == 1) {
-    sim.gate_x(0, {}, {});
-}
-while (sim.read(0) == 0) {
-    sim.gate_x(0, {}, {});
-}
 for (int _loop_i_0 : {1, 3, 4, 9}) {
     sim.gate_rx(_loop_i_0, 0, {}, {});
-}
-for (int _loop_i_1 : {1, 3, 4, 9}) {
-    sim.gate_ry(_loop_i_1, 0, {}, {});
-}
-for (int _loop_i_2 = 0; _loop_i_2 < 10; _loop_i_2 += 2) {
-    sim.gate_rz(_loop_i_2, 0, {}, {});
+    for (int _loop_i_1 : {1, 3, 4, 9}) {
+        sim.gate_ry(_loop_i_1, 0, {}, {});
+        for (int _loop_i_2 = 0; _loop_i_2 < 10; _loop_i_2 += 2) {
+            sim.gate_rz(_loop_i_2, 0, {}, {});
+        }
+    }
 }
 sim.measure({0}, {0});
+while (sim.read(0) == 0) {
+    sim.gate_x(0, {}, {});
+    sim.measure({0}, {0});
+}
 ```
