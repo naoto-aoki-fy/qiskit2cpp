@@ -97,14 +97,15 @@ def emit_gate_call(
     ctrl: list[int],
     level: int,
 ) -> None:
-    neg_list = ", ".join(str(idx) for idx in negctrl)
-    pos_list = ", ".join(str(idx) for idx in ctrl)
-    neg_expr = f"std::vector<int>{{{neg_list}}}"
-    pos_expr = f"std::vector<int>{{{pos_list}}}"
+    def format_index_list(indices: Sequence[int]) -> str:
+        inner = ", ".join(str(idx) for idx in indices)
+        return f"{{{inner}}}"
+
+    neg_expr = format_index_list(negctrl)
+    pos_expr = format_index_list(ctrl)
     if gate_name in {"swap", "iswap"}:
-        target_list = ", ".join(str(idx) for idx in targets)
         state.emit(
-            f"sim.{gate_name}(std::vector<int>{{{target_list}}}, {neg_expr}, {pos_expr});",
+            f"sim.{gate_name}({format_index_list(targets)}, {neg_expr}, {pos_expr});",
             level,
         )
         return

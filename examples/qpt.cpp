@@ -3,7 +3,7 @@ std::vector<int> creg(1);
 // Unsupported operation: reset
 // Unsupported operation: pre
 // Unsupported operation: barrier
-sim.hadamard(0, std::vector<int>{}, std::vector<int>{});
+sim.hadamard(0, {}, {});
 // Unsupported operation: barrier
 // Unsupported operation: post
 creg[0] = sim.measure(0);

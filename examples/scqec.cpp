@@ -17,18 +17,18 @@ std::vector<int> creg(17);
 // Unsupported operation: reset
 // Unsupported operation: reset
 // Unsupported operation: reset
-sim.hadamard(9, std::vector<int>{}, std::vector<int>{});
-sim.hadamard(10, std::vector<int>{}, std::vector<int>{});
-sim.hadamard(11, std::vector<int>{}, std::vector<int>{});
-sim.hadamard(12, std::vector<int>{}, std::vector<int>{});
-sim.hadamard(13, std::vector<int>{}, std::vector<int>{});
-sim.hadamard(14, std::vector<int>{}, std::vector<int>{});
-sim.hadamard(15, std::vector<int>{}, std::vector<int>{});
-sim.hadamard(16, std::vector<int>{}, std::vector<int>{});
-sim.gate_x(9, std::vector<int>{}, std::vector<int>{0});
-sim.gate_x(9, std::vector<int>{}, std::vector<int>{1});
-sim.gate_x(10, std::vector<int>{}, std::vector<int>{1});
-sim.gate_x(10, std::vector<int>{}, std::vector<int>{2});
+sim.hadamard(9, {}, {});
+sim.hadamard(10, {}, {});
+sim.hadamard(11, {}, {});
+sim.hadamard(12, {}, {});
+sim.hadamard(13, {}, {});
+sim.hadamard(14, {}, {});
+sim.hadamard(15, {}, {});
+sim.hadamard(16, {}, {});
+sim.gate_x(9, {}, {0});
+sim.gate_x(9, {}, {1});
+sim.gate_x(10, {}, {1});
+sim.gate_x(10, {}, {2});
 creg[0] = sim.measure(9);
 creg[1] = sim.measure(10);
 creg[2] = sim.measure(11);
