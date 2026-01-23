@@ -49,9 +49,9 @@ def condition_to_cpp(condition: Any, clbit2num: dict[Any, int]) -> str:
 def format_vector_int(values: Iterable[int]) -> str:
     values_list = list(values)
     if not values_list:
-        return "std::vector<int>{}"
+        return "{}"
     joined = ",".join(str(v) for v in values_list)
-    return f"std::vector<int>{{{joined}}}"
+    return f"{{{joined}}}"
 
 
 def split_controls(
