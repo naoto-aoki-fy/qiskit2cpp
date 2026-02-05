@@ -1,4 +1,6 @@
-from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit
+import argparse
+
+from qiskit import ClassicalRegister, QuantumCircuit, QuantumRegister, qpy
 from qiskit.circuit.library import HGate, XGate
 
 q0 = QuantumRegister(7)
@@ -11,7 +13,6 @@ for i in range(7):
     q.append(q0[i])
 for i in range(7):
     q.append(q1[i])
-    qc.clbits
 
 qc.x(q[0])
 qc.cx(q[0], q[3])
@@ -30,3 +31,11 @@ qc.u(1.0, 2.0, 3.0, q[0])
 qc.measure(q[2], c[1])
 qc.measure(q[3], c[0])
 
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Write this example circuit as QPY")
+    parser.add_argument("qpy_file", help="Output QPY path")
+    args = parser.parse_args()
+
+    with open(args.qpy_file, "wb") as f:
+        qpy.dump(qc, f)

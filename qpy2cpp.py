@@ -1,19 +1,26 @@
 """Convert a Qiskit ``QuantumCircuit`` into C++ simulator calls.
 
-The quantum circuit is defined in a separate Python file that must define a
-variable named ``qc``.  Usage::
+Input can be either:
+- a Python file that defines a variable named ``qc``
+- a QPY file containing at least one circuit
 
-    python qc2cpp.py path/to/circuit_file.py
+Usage::
+
+    python qpy2cpp.py path/to/circuit_file.py
+    python qpy2cpp.py path/to/circuit.qpy
 
 The generated C++ code is printed to standard output.
 """
 
 import argparse
 import runpy
+from pathlib import Path
 from typing import Dict, Iterable, Tuple
 
+from qiskit import qpy
 from qiskit.circuit import ClassicalRegister
 from qiskit.circuit.controlflow import ForLoopOp, IfElseOp, WhileLoopOp
+
 
 def pack_xbits(xbits_list: Iterable) -> Tuple[Dict, list]:
     """Pack quantum or classical bits into sequential numbers."""
@@ -26,6 +33,7 @@ def pack_xbits(xbits_list: Iterable) -> Tuple[Dict, list]:
         num2xbit_list.append(xbit)
 
     return xbit2num_dict, num2xbit_list
+
 
 def get_base_gate_name(operation) -> str:
     """Return the base gate name of an operation by inspecting its type."""
@@ -82,9 +90,7 @@ def emit(instructions, qubit2num_dict, clbit2num_dict, indent: str = ""):
                 start = sequence.start
                 stop = sequence.stop
                 step = sequence.step
-                cond = (
-                    f"{loop_var} < {stop}" if step > 0 else f"{loop_var} > {stop}"
-                )
+                cond = f"{loop_var} < {stop}" if step > 0 else f"{loop_var} > {stop}"
                 increment = (
                     f"{loop_var} += {step}"
                     if step not in (1, -1)
@@ -121,12 +127,8 @@ def emit(instructions, qubit2num_dict, clbit2num_dict, indent: str = ""):
 
             args = [str(param) for param in gate.params]
             args.append(str(target_qubit_num))
-            args.append(
-                f"{{{', '.join(str(num) for num in neg_ctrl_qubit_num_list)}}}"
-            )
-            args.append(
-                f"{{{', '.join(str(num) for num in ctrl_qubit_num_list)}}}"
-            )
+            args.append(f"{{{', '.join(str(num) for num in neg_ctrl_qubit_num_list)}}}")
+            args.append(f"{{{', '.join(str(num) for num in ctrl_qubit_num_list)}}}")
             args_str = ", ".join(args)
 
             print(f"{indent}sim.gate_{base_gate_name}({args_str});")
@@ -135,8 +137,6 @@ def emit(instructions, qubit2num_dict, clbit2num_dict, indent: str = ""):
 def circuit_to_cpp(qc) -> None:
     """Print a C++ representation of ``qc`` to ``stdout``."""
 
-    # ``QuantumCircuit`` tracks registers for nested control-flow blocks, so
-    # this collection covers all qubits and clbits used anywhere in ``qc``.
     qubit2num_dict, num2qubit_list = pack_xbits(qc.qubits)
     clbit2num_dict, num2clbit_list = pack_xbits(qc.clbits)
 
@@ -148,9 +148,7 @@ def circuit_to_cpp(qc) -> None:
     emit(qc.data, qubit2num_dict, clbit2num_dict)
 
 
-def load_circuit(path: str):
-    """Load a QuantumCircuit from ``path`` which defines ``qc``."""
-
+def load_python_circuit(path: str):
     namespace = runpy.run_path(path)
     qc = namespace.get("qc")
     if qc is None:
@@ -158,11 +156,26 @@ def load_circuit(path: str):
     return qc
 
 
+def load_qpy_circuit(path: str):
+    with open(path, "rb") as qpy_file:
+        circuits = qpy.load(qpy_file)
+    if not circuits:
+        raise ValueError("QPY file does not contain any circuits.")
+    return circuits[0]
+
+
+def load_circuit(path: str):
+    suffix = Path(path).suffix.lower()
+    if suffix == ".qpy":
+        return load_qpy_circuit(path)
+    return load_python_circuit(path)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Convert a Qiskit QuantumCircuit defined in another file to C++"
+        description="Convert a Qiskit QuantumCircuit (Python or QPY) to C++"
     )
-    parser.add_argument("circuit_file", help="Python file that defines a variable 'qc'")
+    parser.add_argument("circuit_file", help="Input Python file or QPY file")
     args = parser.parse_args()
 
     qc = load_circuit(args.circuit_file)

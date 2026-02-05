@@ -1,8 +1,16 @@
 # qiskit's QuantumCircuit to C++ converter
 
 This tool converts a [Qiskit](https://qiskit.org/) ``QuantumCircuit`` into a set
-of C++ simulator calls.  Define your circuit in a separate Python file that
-exposes a variable named ``qc`` and pass that file to the converter.
+of C++ simulator calls. Input can be either:
+
+- a Python file that exposes a variable named ``qc``
+- a QPY file containing at least one circuit
+
+## Converters
+
+- ``qpy2cpp.py``: outputs C++ simulator calls
+- ``qpy2qasm.py``: outputs OpenQASM 3
+- ``qpy2svg.py``: outputs SVG
 
 ## Example
 
@@ -34,10 +42,17 @@ qc.measure(q[2], c[1])
 qc.measure(q[3], c[0])
 ```
 
-Run the converter:
+Run the converter directly from Python input:
 
 ```bash
-python qc2cpp.py examples/example_circuit.py
+python qpy2cpp.py examples/example_circuit.py
+```
+
+Or first generate QPY then convert:
+
+```bash
+python examples/example_circuit.py /tmp/example_circuit.qpy
+python qpy2cpp.py /tmp/example_circuit.qpy
 ```
 
 Output:
@@ -57,47 +72,4 @@ sim.gate_p(1.0, 0, {}, {});
 sim.gate_u(1.0, 2.0, 3.0, 0, {}, {});
 sim.measure({2}, {1});
 sim.measure({3}, {0});
-```
-
-### `examples/example_control_flow.py`
-
-```python
-from qiskit import QuantumCircuit, QuantumRegister, ClassicalRegister
-
-q = QuantumRegister(1)
-c = ClassicalRegister(1)
-qc = QuantumCircuit(q, c)
-
-with qc.for_loop([1, 3, 4, 9]) as i:
-    qc.rx(i, 0)
-
-    with qc.for_loop((1, 3, 4, 9)) as j:
-        qc.ry(j, 0)
-
-        with qc.for_loop(range(0, 10, 2)) as k:
-            qc.rz(k, 0)
-
-qc.measure(0, 0)
-with qc.while_loop((c[0], 0)):
-    qc.x(0)
-    qc.measure(0, 0)
-```
-
-```c++
-sim.set_num_qubits(1);
-sim.set_num_clbits(1);
-for (int _loop_i_0 : {1, 3, 4, 9}) {
-    sim.gate_rx(_loop_i_0, 0, {}, {});
-    for (int _loop_i_1 : {1, 3, 4, 9}) {
-        sim.gate_ry(_loop_i_1, 0, {}, {});
-        for (int _loop_i_2 = 0; _loop_i_2 < 10; _loop_i_2 += 2) {
-            sim.gate_rz(_loop_i_2, 0, {}, {});
-        }
-    }
-}
-sim.measure({0}, {0});
-while (sim.read(0) == 0) {
-    sim.gate_x(0, {}, {});
-    sim.measure({0}, {0});
-}
 ```
