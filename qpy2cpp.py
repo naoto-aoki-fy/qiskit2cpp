@@ -18,7 +18,8 @@ from pathlib import Path
 from typing import Dict, Iterable, Tuple
 
 from qiskit import qpy
-from qiskit.circuit import ClassicalRegister
+from qiskit.circuit import AnnotatedOperation, ClassicalRegister, ControlledGate
+from qiskit.circuit.annotated_operation import ControlModifier
 from qiskit.circuit.controlflow import ForLoopOp, IfElseOp, WhileLoopOp
 
 
@@ -52,6 +53,20 @@ def condition_to_cpp(condition, clbit2num_dict) -> str:
     else:
         bit_expr = f"sim.read({{{', '.join(str(bn) for bn in bit_nums)}}})"
     return f"{bit_expr} == {value}"
+
+
+def get_num_ctrl_qubits(op) -> int:
+    if isinstance(op, ControlledGate):
+        return op.num_ctrl_qubits
+
+    if isinstance(op, AnnotatedOperation):
+        return sum(
+            modifier.num_ctrl_qubits
+            for modifier in op.modifiers
+            if isinstance(modifier, ControlModifier)
+        )
+
+    return 0
 
 
 def emit(instructions, qubit2num_dict, clbit2num_dict, indent: str = ""):
@@ -112,8 +127,9 @@ def emit(instructions, qubit2num_dict, clbit2num_dict, indent: str = ""):
             print(f"{indent}}}")
         else:
             base_gate_name = get_base_gate_name(op)
-            both_ctrl_qubit_num_list = qubit_num_list[:-1]
-            target_qubit_num = qubit_num_list[-1]
+            num_ctrl_qubits = get_num_ctrl_qubits(op)
+            both_ctrl_qubit_num_list = qubit_num_list[:num_ctrl_qubits]
+            target_qubit_num_list = qubit_num_list[num_ctrl_qubits:]
 
             ctrl_state = getattr(op, "ctrl_state", None)
             neg_ctrl_qubit_num_list = []
@@ -124,9 +140,11 @@ def emit(instructions, qubit2num_dict, clbit2num_dict, indent: str = ""):
                         ctrl_qubit_num_list.append(ctrl_qubit_num)
                     else:
                         neg_ctrl_qubit_num_list.append(ctrl_qubit_num)
+            else:
+                ctrl_qubit_num_list = list(both_ctrl_qubit_num_list)
 
             args = [str(param) for param in gate.params]
-            args.append(str(target_qubit_num))
+            args.append(f"{{{', '.join(str(num) for num in target_qubit_num_list)}}}")
             args.append(f"{{{', '.join(str(num) for num in neg_ctrl_qubit_num_list)}}}")
             args.append(f"{{{', '.join(str(num) for num in ctrl_qubit_num_list)}}}")
             args_str = ", ".join(args)
