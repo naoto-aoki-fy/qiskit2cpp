@@ -159,11 +159,19 @@ def circuit_to_cpp(qc) -> None:
     clbit2num_dict, num2clbit_list = pack_xbits(qc.clbits)
 
     num_qubits = len(num2qubit_list)
-    print(f"sim.set_num_qubits({num_qubits});")
     num_clbits = len(num2clbit_list)
-    print(f"sim.set_num_clbits({num_clbits});")
+    print("void circuit(qcs::simulator& sim) {")
+    print()
+    print(f"    constexpr unsigned int num_qubits = {num_qubits};")
+    print("    sim.set_num_qubits(num_qubits);")
+    print()
+    print(f"    constexpr unsigned int num_clbits = {num_clbits};")
+    print("    sim.set_num_clbits(num_clbits);")
+    print()
 
-    emit(qc.data, qubit2num_dict, clbit2num_dict)
+    emit(qc.data, qubit2num_dict, clbit2num_dict, "    ")
+    print()
+    print("}")
 
 
 def load_python_circuit(path: str):
