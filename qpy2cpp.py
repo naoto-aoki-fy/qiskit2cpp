@@ -15,25 +15,11 @@ The generated C++ code is printed to standard output.
 import argparse
 import runpy
 from pathlib import Path
-from typing import Dict, Iterable, Tuple
 
 from qiskit import qpy
 from qiskit.circuit import AnnotatedOperation, ClassicalRegister, ControlledGate
 from qiskit.circuit.annotated_operation import ControlModifier
 from qiskit.circuit.controlflow import ForLoopOp, IfElseOp, WhileLoopOp
-
-
-def pack_xbits(xbits_list: Iterable) -> Tuple[Dict, list]:
-    """Pack quantum or classical bits into sequential numbers."""
-
-    xbit2num_dict: Dict = {}
-    num2xbit_list = []
-
-    for xbit_num, xbit in enumerate(xbits_list):
-        xbit2num_dict[xbit] = xbit_num
-        num2xbit_list.append(xbit)
-
-    return xbit2num_dict, num2xbit_list
 
 
 def get_base_gate_name(operation) -> str:
@@ -44,10 +30,10 @@ def get_base_gate_name(operation) -> str:
     return base_gate.name
 
 
-def condition_to_cpp(condition, clbit2num_dict) -> str:
+def condition_to_cpp(condition, qc) -> str:
     bits, value = condition
     bits_list = bits if isinstance(bits, ClassicalRegister) else [bits]
-    bit_nums = [clbit2num_dict[b] for b in bits_list]
+    bit_nums = [qc.find_bit(bit).index for bit in bits_list]
     if len(bit_nums) == 1:
         bit_expr = f"sim.read({bit_nums[0]})"
     else:
@@ -69,11 +55,11 @@ def get_num_ctrl_qubits(op) -> int:
     return 0
 
 
-def emit(instructions, qubit2num_dict, clbit2num_dict, indent: str = ""):
+def emit(instructions, qc, indent: str = ""):
     for gate in instructions:
         op = gate.operation
-        qubit_num_list = tuple(qubit2num_dict[q] for q in gate.qubits)
-        clbit_num_list = tuple(clbit2num_dict[c] for c in gate.clbits)
+        qubit_num_list = tuple(qc.find_bit(qubit).index for qubit in gate.qubits)
+        clbit_num_list = tuple(qc.find_bit(clbit).index for clbit in gate.clbits)
 
         if op.name == "measure":
             print(
@@ -82,17 +68,17 @@ def emit(instructions, qubit2num_dict, clbit2num_dict, indent: str = ""):
                 + f"{{{','.join(str(n) for n in clbit_num_list)}}});"
             )
         elif isinstance(op, IfElseOp):
-            cond = condition_to_cpp(op.condition, clbit2num_dict)
+            cond = condition_to_cpp(op.condition, qc)
             print(f"{indent}if ({cond}) {{")
-            emit(op.blocks[0].data, qubit2num_dict, clbit2num_dict, indent + "    ")
+            emit(op.blocks[0].data, qc, indent + "    ")
             if len(op.blocks) > 1 and op.blocks[1] is not None:
                 print(f"{indent}}} else {{")
-                emit(op.blocks[1].data, qubit2num_dict, clbit2num_dict, indent + "    ")
+                emit(op.blocks[1].data, qc, indent + "    ")
             print(f"{indent}}}")
         elif isinstance(op, WhileLoopOp):
-            cond = condition_to_cpp(op.condition, clbit2num_dict)
+            cond = condition_to_cpp(op.condition, qc)
             print(f"{indent}while ({cond}) {{")
-            emit(op.blocks[0].data, qubit2num_dict, clbit2num_dict, indent + "    ")
+            emit(op.blocks[0].data, qc, indent + "    ")
             print(f"{indent}}}")
         elif isinstance(op, ForLoopOp):
             sequence = op.params[0]
@@ -123,7 +109,7 @@ def emit(instructions, qubit2num_dict, clbit2num_dict, indent: str = ""):
                     f"{indent}for (int {loop_var} = 0; {loop_var} < {count}; ++{loop_var}) {{",
                 )
 
-            emit(op.blocks[0].data, qubit2num_dict, clbit2num_dict, indent + "    ")
+            emit(op.blocks[0].data, qc, indent + "    ")
             print(f"{indent}}}")
         else:
             base_gate_name = get_base_gate_name(op)
@@ -155,11 +141,8 @@ def emit(instructions, qubit2num_dict, clbit2num_dict, indent: str = ""):
 def circuit_to_cpp(qc) -> None:
     """Print a C++ representation of ``qc`` to ``stdout``."""
 
-    qubit2num_dict, num2qubit_list = pack_xbits(qc.qubits)
-    clbit2num_dict, num2clbit_list = pack_xbits(qc.clbits)
-
-    num_qubits = len(num2qubit_list)
-    num_clbits = len(num2clbit_list)
+    num_qubits = qc.num_qubits
+    num_clbits = qc.num_clbits
     print("void circuit(qcs::simulator& sim) {")
     print()
     print(f"    constexpr unsigned int num_qubits = {num_qubits};")
@@ -169,7 +152,7 @@ def circuit_to_cpp(qc) -> None:
     print("    sim.set_num_clbits(num_clbits);")
     print()
 
-    emit(qc.data, qubit2num_dict, clbit2num_dict, "    ")
+    emit(qc.data, qc, "    ")
     print()
     print("}")
 
