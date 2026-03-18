@@ -17,17 +17,38 @@ import runpy
 from pathlib import Path
 
 from qiskit import qpy
-from qiskit.circuit import AnnotatedOperation, ClassicalRegister, ControlledGate
+from qiskit.circuit import AnnotatedOperation, ClassicalRegister, ControlledGate, Gate
 from qiskit.circuit.annotated_operation import ControlModifier
 from qiskit.circuit.controlflow import ForLoopOp, IfElseOp, WhileLoopOp
+from qiskit.circuit.library.standard_gates import get_standard_gate_name_mapping
+from qiskit.circuit.library.standard_gates.u import CUGate, UGate
+
+STANDARD_GATE_TYPE_NAME_PAIRS = [
+    (type(gate), gate_name) for gate_name, gate in get_standard_gate_name_mapping().items()
+]
 
 
 def get_base_gate_name(operation) -> str:
     """Return the base gate name of an operation by inspecting its type."""
+    if isinstance(operation, CUGate):
+        return "u4"
+    if isinstance(operation, UGate):
+        return "u3"
+
     base_gate = operation
     while hasattr(base_gate, "base_gate"):
         base_gate = base_gate.base_gate
-    return base_gate.name
+
+    for gate_type, gate_name in STANDARD_GATE_TYPE_NAME_PAIRS:
+        if isinstance(base_gate, gate_type):
+            return gate_name
+
+    if isinstance(base_gate, Gate):
+        raise ValueError(f"Unsupported gate type for base name resolution: {type(base_gate)}")
+
+    raise ValueError(
+        f"Operation does not resolve to a Gate instance: {type(base_gate)}"
+    )
 
 
 def condition_to_cpp(condition, qc) -> str:
