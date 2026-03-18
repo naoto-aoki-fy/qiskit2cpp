@@ -17,7 +17,7 @@ import runpy
 from pathlib import Path
 
 from qiskit import qpy
-from qiskit.circuit import AnnotatedOperation, ClassicalRegister, ControlledGate, Gate
+from qiskit.circuit import QuantumCircuit, AnnotatedOperation, ClassicalRegister, ControlledGate, Gate
 from qiskit.circuit.annotated_operation import ControlModifier
 from qiskit.circuit.controlflow import ForLoopOp, IfElseOp, WhileLoopOp
 from qiskit.circuit.library.standard_gates import get_standard_gate_name_mapping
@@ -188,9 +188,15 @@ def circuit_to_cpp(qc) -> None:
 def load_python_circuit(path: str):
     namespace = runpy.run_path(path)
     qc = namespace.get("qc")
-    if qc is None:
-        raise ValueError("Circuit file must define a variable named 'qc'.")
-    return qc
+    if qc is not None:
+        return qc
+    qc = namespace.get("circuit")
+    if qc is not None:
+        return qc
+    for name, value in namespace.items():
+        if not name.startswith("_") and isinstance(value, QuantumCircuit):
+            return value
+    raise ValueError("Circuit file must define a variable named 'qc'.")
 
 
 def load_qpy_circuit(path: str):
