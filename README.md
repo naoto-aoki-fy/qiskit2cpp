@@ -6,12 +6,6 @@ of C++ simulator calls. Input can be either:
 - a Python file that exposes a variable named ``qc``
 - a QPY file containing at least one circuit
 
-## Converters
-
-- ``qpy2cpp.py``: outputs C++ simulator calls
-- ``qpy2qasm.py``: outputs OpenQASM 3
-- ``qpy2svg.py``: outputs SVG
-
 ## Example
 
 ### `examples/example_circuit.py`
@@ -80,7 +74,7 @@ void circuit_run(qcs::simulator* sim) {
     sim->gate_h({1}, {}, {0});
     sim->gate_h({13}, {}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12});
     sim->gate_p(1.0, {0}, {}, {});
-    sim->gate_u(1.0, 2.0, 3.0, {0}, {}, {});
+    sim->gate_u3(1.0, 2.0, 3.0, {0}, {}, {});
     sim->measure(2, 1);
     sim->measure(3, 0);
 }
