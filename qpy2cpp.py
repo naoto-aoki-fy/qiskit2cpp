@@ -35,9 +35,9 @@ def condition_to_cpp(condition, qc) -> str:
     bits_list = bits if isinstance(bits, ClassicalRegister) else [bits]
     bit_nums = [qc.find_bit(bit).index for bit in bits_list]
     if len(bit_nums) == 1:
-        bit_expr = f"sim.read({bit_nums[0]})"
+        bit_expr = f"sim->read({bit_nums[0]})"
     else:
-        bit_expr = f"sim.read({{{', '.join(str(bn) for bn in bit_nums)}}})"
+        bit_expr = f"sim->read({{{', '.join(str(bn) for bn in bit_nums)}}})"
     return f"{bit_expr} == {value}"
 
 
@@ -62,11 +62,14 @@ def emit(instructions, qc, indent: str = ""):
         clbit_num_list = tuple(qc.find_bit(clbit).index for clbit in gate.clbits)
 
         if op.name == "measure":
-            print(
-                indent
-                + f"sim.measure({{{','.join(str(n) for n in qubit_num_list)}}}, "
-                + f"{{{','.join(str(n) for n in clbit_num_list)}}});"
-            )
+            if len(qubit_num_list) == 1 and len(clbit_num_list) == 1:
+                print(indent + f"sim->measure({qubit_num_list[0]}, {clbit_num_list[0]});")
+            else:
+                print(
+                    indent
+                    + f"sim->measure({{{','.join(str(n) for n in qubit_num_list)}}}, "
+                    + f"{{{','.join(str(n) for n in clbit_num_list)}}});"
+                )
         elif isinstance(op, IfElseOp):
             cond = condition_to_cpp(op.condition, qc)
             print(f"{indent}if ({cond}) {{")
@@ -135,7 +138,7 @@ def emit(instructions, qc, indent: str = ""):
             args.append(f"{{{', '.join(str(num) for num in ctrl_qubit_num_list)}}}")
             args_str = ", ".join(args)
 
-            print(f"{indent}sim.gate_{base_gate_name}({args_str});")
+            print(f"{indent}sim->gate_{base_gate_name}({args_str});")
 
 
 def circuit_to_cpp(qc) -> None:
@@ -143,15 +146,19 @@ def circuit_to_cpp(qc) -> None:
 
     num_qubits = qc.num_qubits
     num_clbits = qc.num_clbits
-    print("void circuit(qcs::simulator& sim) {")
+    print("#include <qcs.hpp>")
     print()
-    print(f"    constexpr unsigned int num_qubits = {num_qubits};")
-    print("    sim.set_num_qubits(num_qubits);")
+    print(f"static constexpr unsigned int num_qubits = {num_qubits};")
+    print(f"static constexpr unsigned int num_clbits = {num_clbits};")
     print()
-    print(f"    constexpr unsigned int num_clbits = {num_clbits};")
-    print("    sim.set_num_clbits(num_clbits);")
+    print('extern "C"')
+    print("void circuit_init(qcs::simulator* sim) {")
+    print("    sim->set_num_qubits(num_qubits);")
+    print("    sim->set_num_clbits(num_clbits);")
+    print("}")
     print()
-
+    print('extern "C"')
+    print("void circuit_run(qcs::simulator* sim) {")
     emit(qc.data, qc, "    ")
     print()
     print("}")
