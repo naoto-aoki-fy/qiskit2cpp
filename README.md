@@ -79,3 +79,7 @@ void circuit_run(qcs::simulator* sim) {
     sim->measure(3, 0);
 }
 ```
+
+## Acknowledgments
+
+This repository is based on results obtained from a project, JPNP20017, commissioned by the New Energy and Industrial Technology Development Organization (NEDO).
