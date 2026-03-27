@@ -17,7 +17,14 @@ import runpy
 from pathlib import Path
 
 from qiskit import qpy
-from qiskit.circuit import QuantumCircuit, AnnotatedOperation, ClassicalRegister, ControlledGate, Gate
+from qiskit.circuit import (
+    QuantumCircuit,
+    AnnotatedOperation,
+    ClassicalRegister,
+    ControlledGate,
+    Gate,
+    Measurement,
+)
 from qiskit.circuit.annotated_operation import ControlModifier
 from qiskit.circuit.controlflow import ForLoopOp, IfElseOp, WhileLoopOp
 from qiskit.circuit.library.standard_gates import get_standard_gate_name_mapping
@@ -82,7 +89,7 @@ def emit(instructions, qc, indent: str = ""):
         qubit_num_list = tuple(qc.find_bit(qubit).index for qubit in gate.qubits)
         clbit_num_list = tuple(qc.find_bit(clbit).index for clbit in gate.clbits)
 
-        if op.name == "measure":
+        if isinstance(op, Measurement):
             if len(qubit_num_list) == 1 and len(clbit_num_list) == 1:
                 print(indent + f"sim->measure({qubit_num_list[0]}, {clbit_num_list[0]});")
             else:
