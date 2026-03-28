@@ -3,11 +3,13 @@
 Input can be either:
 - a Python file that defines a variable named ``qc``
 - a QPY file containing at least one circuit
+- a QASM file loadable via ``qiskit.qasm3`` or ``qiskit.qasm2``
 
 Usage::
 
     python qpy2cpp.py path/to/circuit_file.py
     python qpy2cpp.py path/to/circuit.qpy
+    python qpy2cpp.py path/to/circuit.qasm
 
 The generated C++ code is printed to standard output.
 """
@@ -16,7 +18,7 @@ import argparse
 import runpy
 from pathlib import Path
 
-from qiskit import qpy
+from qiskit import qasm2, qasm3, qpy
 from qiskit.circuit import (
     QuantumCircuit,
     AnnotatedOperation,
@@ -219,18 +221,50 @@ def load_qpy_circuit(path: str):
     return circuits[0]
 
 
+def _rewrite_qasm_for_retry(qasm_text: str) -> str:
+    return (
+        qasm_text.replace("OPENQASM 2.0;", "OPENQASM 3.0;")
+        .replace('include "qelib1.inc";', 'include "stdgates.inc";')
+    )
+
+
+def load_qasm_circuit(path: str):
+    qasm_text = Path(path).read_text(encoding="utf-8")
+
+    for loader in (qasm3.loads, qasm2.loads):
+        try:
+            return loader(qasm_text)
+        except Exception:
+            pass
+
+    rewritten_qasm = _rewrite_qasm_for_retry(qasm_text)
+    if rewritten_qasm != qasm_text:
+        for loader in (qasm3.loads, qasm2.loads):
+            try:
+                return loader(rewritten_qasm)
+            except Exception:
+                pass
+
+    raise ValueError(
+        "Failed to load QASM via qiskit.qasm3/qiskit.qasm2, including retry with "
+        "OPENQASM/stdgates replacements."
+    )
+
+
 def load_circuit(path: str):
     suffix = Path(path).suffix.lower()
     if suffix == ".qpy":
         return load_qpy_circuit(path)
+    if suffix in {".qasm", ".qasm2", ".qasm3"}:
+        return load_qasm_circuit(path)
     return load_python_circuit(path)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Convert a Qiskit QuantumCircuit (Python or QPY) to C++"
+        description="Convert a Qiskit QuantumCircuit (Python, QPY, or QASM) to C++"
     )
-    parser.add_argument("circuit_file", help="Input Python file or QPY file")
+    parser.add_argument("circuit_file", help="Input Python, QPY, or QASM file")
     args = parser.parse_args()
 
     qc = load_circuit(args.circuit_file)
