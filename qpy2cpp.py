@@ -26,7 +26,7 @@ from qiskit.circuit import (
     ClassicalRegister,
     ControlledGate,
     Gate,
-    Measurement,
+    Measure,
 )
 from qiskit.circuit.annotated_operation import ControlModifier
 from qiskit.circuit.controlflow import ForLoopOp, IfElseOp, WhileLoopOp
@@ -92,7 +92,7 @@ def emit(instructions, qc, indent: str = ""):
         qubit_num_list = tuple(qc.find_bit(qubit).index for qubit in gate.qubits)
         clbit_num_list = tuple(qc.find_bit(clbit).index for clbit in gate.clbits)
 
-        if isinstance(op, Measurement):
+        if isinstance(op, Measure):
             if len(qubit_num_list) == 1 and len(clbit_num_list) == 1:
                 print(indent + f"sim->measure({qubit_num_list[0]}, {clbit_num_list[0]});")
             else:
