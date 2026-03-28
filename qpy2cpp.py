@@ -20,6 +20,7 @@ from qiskit import qpy
 from qiskit.circuit import (
     QuantumCircuit,
     AnnotatedOperation,
+    Barrier,
     ClassicalRegister,
     ControlledGate,
     Gate,
@@ -142,6 +143,10 @@ def emit(instructions, qc, indent: str = ""):
 
             emit(op.blocks[0].data, qc, indent + "    ")
             print(f"{indent}}}")
+        elif isinstance(op, Barrier):
+            qubits_str = ", ".join(str(n) for n in qubit_num_list)
+            clbits_str = ", ".join(str(n) for n in clbit_num_list)
+            print(f"{indent}// barrier qargs={{{qubits_str}}}, cargs={{{clbits_str}}}")
         else:
             base_gate_name = get_base_gate_name(op)
             num_ctrl_qubits = get_num_ctrl_qubits(op)
