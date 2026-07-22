@@ -1,10 +1,11 @@
-# qiskit's QuantumCircuit to C++ converter
+# qiskit2c
 
 This tool converts a [Qiskit](https://qiskit.org/) ``QuantumCircuit`` into a set
-of C++ simulator calls. Input can be either:
+of C simulator calls. Input can be either:
 
 - a Python file that exposes a variable named ``qc``
 - a QPY file containing at least one circuit
+- a QASM file loadable via ``qiskit.qasm3`` or ``qiskit.qasm2``
 
 ## Example
 
@@ -39,44 +40,43 @@ qc.measure(q[3], c[0])
 Run the converter directly from Python input:
 
 ```bash
-python qpy2cpp.py examples/example_circuit.py
+python qpy2c.py examples/example_circuit.py
 ```
 
 Or first generate QPY then convert:
 
 ```bash
 python examples/example_circuit.py /tmp/example_circuit.qpy
-python qpy2cpp.py /tmp/example_circuit.qpy
+python qpy2c.py /tmp/example_circuit.qpy
 ```
 
 Output:
 
-```c++
-#include <qcs.hpp>
+```c
+#include <stddef.h>
+#include <qcs.h>
 
-static constexpr unsigned int num_qubits = 14;
-static constexpr unsigned int num_clbits = 14;
+static const unsigned int num_qubits = 14;
+static const unsigned int num_clbits = 14;
 
-extern "C"
-void circuit_init(qcs::simulator* sim) {
-    sim->set_num_qubits(num_qubits);
-    sim->set_num_clbits(num_clbits);
+void circuit_init(qcs_simulator* sim) {
+    qcs_simulator_set_num_qubits(sim, num_qubits);
+    qcs_simulator_set_num_clbits(sim, num_clbits);
 }
 
-extern "C"
-void circuit_run(qcs::simulator* sim) {
-    sim->gate_x({0}, {}, {});
-    sim->gate_x({3}, {}, {0});
-    sim->gate_x({2}, {}, {0, 1});
-    sim->gate_x({0}, {}, {1, 2, 3, 4, 5});
-    sim->gate_x({4}, {0, 1}, {});
-    sim->gate_h({0}, {}, {});
-    sim->gate_h({1}, {}, {0});
-    sim->gate_h({13}, {}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12});
-    sim->gate_p(1.0, {0}, {}, {});
-    sim->gate_u3(1.0, 2.0, 3.0, {0}, {}, {});
-    sim->measure(2, 1);
-    sim->measure(3, 0);
+void circuit_run(qcs_simulator* sim) {
+    qcs_simulator_gate_x(sim, (int[]){0}, 1, NULL, 0, NULL, 0);
+    qcs_simulator_gate_x(sim, (int[]){3}, 1, NULL, 0, (int[]){0}, 1);
+    qcs_simulator_gate_x(sim, (int[]){2}, 1, NULL, 0, (int[]){0, 1}, 2);
+    qcs_simulator_gate_x(sim, (int[]){0}, 1, NULL, 0, (int[]){1, 2, 3, 4, 5}, 5);
+    qcs_simulator_gate_x(sim, (int[]){4}, 1, (int[]){0, 1}, 2, NULL, 0);
+    qcs_simulator_gate_h(sim, (int[]){0}, 1, NULL, 0, NULL, 0);
+    qcs_simulator_gate_h(sim, (int[]){1}, 1, NULL, 0, (int[]){0}, 1);
+    qcs_simulator_gate_h(sim, (int[]){13}, 1, NULL, 0, (int[]){0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}, 13);
+    qcs_simulator_gate_p(sim, 1.0, (int[]){0}, 1, NULL, 0, NULL, 0);
+    qcs_simulator_gate_u3(sim, 1.0, 2.0, 3.0, (int[]){0}, 1, NULL, 0, NULL, 0);
+    qcs_simulator_measure_to_clbit(sim, 2, 1);
+    qcs_simulator_measure_to_clbit(sim, 3, 0);
 }
 ```
 

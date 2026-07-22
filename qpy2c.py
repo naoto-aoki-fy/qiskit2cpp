@@ -1,4 +1,4 @@
-"""Convert a Qiskit ``QuantumCircuit`` into C++ simulator calls.
+"""Convert a Qiskit ``QuantumCircuit`` into C simulator calls.
 
 Input can be either:
 - a Python file that defines a variable named ``qc``
@@ -7,11 +7,11 @@ Input can be either:
 
 Usage::
 
-    python qpy2cpp.py path/to/circuit_file.py
-    python qpy2cpp.py path/to/circuit.qpy
-    python qpy2cpp.py path/to/circuit.qasm
+    python qpy2c.py path/to/circuit_file.py
+    python qpy2c.py path/to/circuit.qpy
+    python qpy2c.py path/to/circuit.qasm
 
-The generated C++ code is printed to standard output.
+The generated C code is printed to standard output.
 """
 
 import argparse
@@ -61,15 +61,26 @@ def get_base_gate_name(operation) -> str:
     )
 
 
-def condition_to_cpp(condition, qc) -> str:
+def condition_to_c(condition, qc) -> str:
     bits, value = condition
     bits_list = bits if isinstance(bits, ClassicalRegister) else [bits]
     bit_nums = [qc.find_bit(bit).index for bit in bits_list]
     if len(bit_nums) == 1:
-        bit_expr = f"sim->read({bit_nums[0]})"
+        bit_expr = f"qcs_simulator_read(sim, {bit_nums[0]})"
     else:
-        bit_expr = f"sim->read({{{', '.join(str(bn) for bn in bit_nums)}}})"
+        terms = [
+            f"(qcs_simulator_read(sim, {bit_num}) << {offset})"
+            for offset, bit_num in enumerate(bit_nums)
+        ]
+        bit_expr = "(" + " | ".join(terms) + ")"
     return f"{bit_expr} == {value}"
+
+
+def c_int_array(values) -> str:
+    """Return a C argument pair for an int array pointer and element count."""
+    if not values:
+        return "NULL, 0"
+    return f"(int[]){{{', '.join(str(value) for value in values)}}}, {len(values)}"
 
 
 def get_num_ctrl_qubits(op) -> int:
@@ -93,16 +104,13 @@ def emit(instructions, qc, indent: str = ""):
         clbit_num_list = tuple(qc.find_bit(clbit).index for clbit in gate.clbits)
 
         if isinstance(op, Measure):
-            if len(qubit_num_list) == 1 and len(clbit_num_list) == 1:
-                print(indent + f"sim->measure({qubit_num_list[0]}, {clbit_num_list[0]});")
-            else:
+            for qubit_num, clbit_num in zip(qubit_num_list, clbit_num_list):
                 print(
                     indent
-                    + f"sim->measure({{{','.join(str(n) for n in qubit_num_list)}}}, "
-                    + f"{{{','.join(str(n) for n in clbit_num_list)}}});"
+                    + f"qcs_simulator_measure_to_clbit(sim, {qubit_num}, {clbit_num});"
                 )
         elif isinstance(op, IfElseOp):
-            cond = condition_to_cpp(op.condition, qc)
+            cond = condition_to_c(op.condition, qc)
             print(f"{indent}if ({cond}) {{")
             emit(op.blocks[0].data, qc, indent + "    ")
             if len(op.blocks) > 1 and op.blocks[1] is not None:
@@ -110,7 +118,7 @@ def emit(instructions, qc, indent: str = ""):
                 emit(op.blocks[1].data, qc, indent + "    ")
             print(f"{indent}}}")
         elif isinstance(op, WhileLoopOp):
-            cond = condition_to_cpp(op.condition, qc)
+            cond = condition_to_c(op.condition, qc)
             print(f"{indent}while ({cond}) {{")
             emit(op.blocks[0].data, qc, indent + "    ")
             print(f"{indent}}}")
@@ -136,7 +144,13 @@ def emit(instructions, qc, indent: str = ""):
                 )
             elif isinstance(sequence, (list, tuple)):
                 values = ", ".join(str(x) for x in sequence)
-                print(f"{indent}for (int {loop_var} : {{{values}}}) {{")
+                sequence_var = f"{loop_var}_values"
+                print(f"{indent}int {sequence_var}[] = {{{values}}};")
+                print(
+                    f"{indent}for (unsigned int {loop_var}_index = 0; "
+                    + f"{loop_var}_index < {len(sequence)}; ++{loop_var}_index) {{"
+                )
+                print(f"{indent}    int {loop_var} = {sequence_var}[{loop_var}_index];")
             else:
                 count = len(sequence)
                 print(
@@ -167,33 +181,32 @@ def emit(instructions, qc, indent: str = ""):
             else:
                 ctrl_qubit_num_list = list(both_ctrl_qubit_num_list)
 
-            args = [str(param) for param in gate.params]
-            args.append(f"{{{', '.join(str(num) for num in target_qubit_num_list)}}}")
-            args.append(f"{{{', '.join(str(num) for num in neg_ctrl_qubit_num_list)}}}")
-            args.append(f"{{{', '.join(str(num) for num in ctrl_qubit_num_list)}}}")
+            args = ["sim", *[str(param) for param in gate.params]]
+            args.append(c_int_array(target_qubit_num_list))
+            args.append(c_int_array(neg_ctrl_qubit_num_list))
+            args.append(c_int_array(ctrl_qubit_num_list))
             args_str = ", ".join(args)
 
-            print(f"{indent}sim->gate_{base_gate_name}({args_str});")
+            print(f"{indent}qcs_simulator_gate_{base_gate_name}({args_str});")
 
 
-def circuit_to_cpp(qc) -> None:
-    """Print a C++ representation of ``qc`` to ``stdout``."""
+def circuit_to_c(qc) -> None:
+    """Print a C representation of ``qc`` to ``stdout``."""
 
     num_qubits = qc.num_qubits
     num_clbits = qc.num_clbits
-    print("#include <qcs.hpp>")
+    print("#include <stddef.h>")
+    print("#include <qcs.h>")
     print()
-    print(f"static constexpr unsigned int num_qubits = {num_qubits};")
-    print(f"static constexpr unsigned int num_clbits = {num_clbits};")
+    print(f"static const unsigned int num_qubits = {num_qubits};")
+    print(f"static const unsigned int num_clbits = {num_clbits};")
     print()
-    print('extern "C"')
-    print("void circuit_init(qcs::simulator* sim) {")
-    print("    sim->set_num_qubits(num_qubits);")
-    print("    sim->set_num_clbits(num_clbits);")
+    print("void circuit_init(qcs_simulator* sim) {")
+    print("    qcs_simulator_set_num_qubits(sim, num_qubits);")
+    print("    qcs_simulator_set_num_clbits(sim, num_clbits);")
     print("}")
     print()
-    print('extern "C"')
-    print("void circuit_run(qcs::simulator* sim) {")
+    print("void circuit_run(qcs_simulator* sim) {")
     emit(qc.data, qc, "    ")
     print()
     print("}")
@@ -262,13 +275,13 @@ def load_circuit(path: str):
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Convert a Qiskit QuantumCircuit (Python, QPY, or QASM) to C++"
+        description="Convert a Qiskit QuantumCircuit (Python, QPY, or QASM) to C"
     )
     parser.add_argument("circuit_file", help="Input Python, QPY, or QASM file")
     args = parser.parse_args()
 
     qc = load_circuit(args.circuit_file)
-    circuit_to_cpp(qc)
+    circuit_to_c(qc)
 
 
 if __name__ == "__main__":
