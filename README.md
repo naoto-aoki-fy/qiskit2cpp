@@ -56,27 +56,32 @@ Output:
 #include <stddef.h>
 #include <qcs.h>
 
-static const unsigned int num_qubits = 14;
-static const unsigned int num_clbits = 14;
+static const bit_num_t num_qubits = 14;
+static const bit_num_t num_clbits = 14;
 
-void circuit_init(qcs_simulator* sim) {
-    qcs_simulator_set_num_qubits(sim, num_qubits);
-    qcs_simulator_set_num_clbits(sim, num_clbits);
+#define QCS_CHECK(call) do { int qcs_status = (call); if (qcs_status != 0) return qcs_status; } while (0)
+
+int circuit_init(qcs_simulator* sim) {
+    QCS_CHECK(qcs_simulator_set_num_qubits(sim, num_qubits));
+    QCS_CHECK(qcs_simulator_set_num_clbits(sim, num_clbits));
+    return 0;
 }
 
-void circuit_run(qcs_simulator* sim) {
-    qcs_simulator_gate_x(sim, (int[]){0}, 1, NULL, 0, NULL, 0);
-    qcs_simulator_gate_x(sim, (int[]){3}, 1, NULL, 0, (int[]){0}, 1);
-    qcs_simulator_gate_x(sim, (int[]){2}, 1, NULL, 0, (int[]){0, 1}, 2);
-    qcs_simulator_gate_x(sim, (int[]){0}, 1, NULL, 0, (int[]){1, 2, 3, 4, 5}, 5);
-    qcs_simulator_gate_x(sim, (int[]){4}, 1, (int[]){0, 1}, 2, NULL, 0);
-    qcs_simulator_gate_h(sim, (int[]){0}, 1, NULL, 0, NULL, 0);
-    qcs_simulator_gate_h(sim, (int[]){1}, 1, NULL, 0, (int[]){0}, 1);
-    qcs_simulator_gate_h(sim, (int[]){13}, 1, NULL, 0, (int[]){0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}, 13);
-    qcs_simulator_gate_p(sim, 1.0, (int[]){0}, 1, NULL, 0, NULL, 0);
-    qcs_simulator_gate_u3(sim, 1.0, 2.0, 3.0, (int[]){0}, 1, NULL, 0, NULL, 0);
-    qcs_simulator_measure_to_clbit(sim, 2, 1);
-    qcs_simulator_measure_to_clbit(sim, 3, 0);
+int circuit_run(qcs_simulator* sim) {
+    QCS_CHECK(qcs_simulator_gate_x(sim, (bit_num_t[]){0}, 1, NULL, 0, NULL, 0));
+    QCS_CHECK(qcs_simulator_gate_x(sim, (bit_num_t[]){3}, 1, NULL, 0, (bit_num_t[]){0}, 1));
+    QCS_CHECK(qcs_simulator_gate_x(sim, (bit_num_t[]){2}, 1, NULL, 0, (bit_num_t[]){0, 1}, 2));
+    QCS_CHECK(qcs_simulator_gate_x(sim, (bit_num_t[]){0}, 1, NULL, 0, (bit_num_t[]){1, 2, 3, 4, 5}, 5));
+    QCS_CHECK(qcs_simulator_gate_x(sim, (bit_num_t[]){4}, 1, (bit_num_t[]){0, 1}, 2, NULL, 0));
+    QCS_CHECK(qcs_simulator_gate_h(sim, (bit_num_t[]){0}, 1, NULL, 0, NULL, 0));
+    QCS_CHECK(qcs_simulator_gate_h(sim, (bit_num_t[]){1}, 1, NULL, 0, (bit_num_t[]){0}, 1));
+    QCS_CHECK(qcs_simulator_gate_h(sim, (bit_num_t[]){13}, 1, NULL, 0, (bit_num_t[]){0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}, 13));
+    QCS_CHECK(qcs_simulator_gate_p(sim, 1.0, (bit_num_t[]){0}, 1, NULL, 0, NULL, 0));
+    QCS_CHECK(qcs_simulator_gate_u3(sim, 1.0, 2.0, 3.0, (bit_num_t[]){0}, 1, NULL, 0, NULL, 0));
+    bit_t measure_result_1; QCS_CHECK(qcs_simulator_measure_to_clbit(sim, 2, 1, &measure_result_1));
+    bit_t measure_result_2; QCS_CHECK(qcs_simulator_measure_to_clbit(sim, 3, 0, &measure_result_2));
+
+    return 0;
 }
 ```
 

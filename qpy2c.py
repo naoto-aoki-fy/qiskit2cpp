@@ -61,26 +61,26 @@ def get_base_gate_name(operation) -> str:
     )
 
 
-def condition_to_c(condition, qc) -> str:
+def condition_to_c(condition, qc, indent: str, temp_id) -> str:
     bits, value = condition
     bits_list = bits if isinstance(bits, ClassicalRegister) else [bits]
     bit_nums = [qc.find_bit(bit).index for bit in bits_list]
-    if len(bit_nums) == 1:
-        bit_expr = f"qcs_simulator_read(sim, {bit_nums[0]})"
-    else:
-        terms = [
-            f"(qcs_simulator_read(sim, {bit_num}) << {offset})"
-            for offset, bit_num in enumerate(bit_nums)
-        ]
-        bit_expr = "(" + " | ".join(terms) + ")"
+    terms = []
+    for offset, bit_num in enumerate(bit_nums):
+        temp_id[0] += 1
+        value_var = f"condition_bit_{temp_id[0]}"
+        print(f"{indent}bit_t {value_var};")
+        print(f"{indent}QCS_CHECK(qcs_simulator_read(sim, {bit_num}, &{value_var}));")
+        terms.append(f"({value_var} << {offset})")
+    bit_expr = terms[0] if len(terms) == 1 else "(" + " | ".join(terms) + ")"
     return f"{bit_expr} == {value}"
 
 
 def c_int_array(values) -> str:
-    """Return a C argument pair for an int array pointer and element count."""
+    """Return a C argument pair for a bit_num_t array pointer and element count."""
     if not values:
         return "NULL, 0"
-    return f"(int[]){{{', '.join(str(value) for value in values)}}}, {len(values)}"
+    return f"(bit_num_t[]){{{', '.join(str(value) for value in values)}}}, {len(values)}"
 
 
 def get_num_ctrl_qubits(op) -> int:
@@ -97,7 +97,9 @@ def get_num_ctrl_qubits(op) -> int:
     return 0
 
 
-def emit(instructions, qc, indent: str = ""):
+def emit(instructions, qc, indent: str = "", temp_id=None):
+    if temp_id is None:
+        temp_id = [0]
     for gate in instructions:
         op = gate.operation
         qubit_num_list = tuple(qc.find_bit(qubit).index for qubit in gate.qubits)
@@ -105,22 +107,28 @@ def emit(instructions, qc, indent: str = ""):
 
         if isinstance(op, Measure):
             for qubit_num, clbit_num in zip(qubit_num_list, clbit_num_list):
+                temp_id[0] += 1
+                result_var = f"measure_result_{temp_id[0]}"
                 print(
                     indent
-                    + f"qcs_simulator_measure_to_clbit(sim, {qubit_num}, {clbit_num});"
+                    + f"bit_t {result_var};"
+                    + f" QCS_CHECK(qcs_simulator_measure_to_clbit(sim, {qubit_num}, {clbit_num}, &{result_var}));"
                 )
         elif isinstance(op, IfElseOp):
-            cond = condition_to_c(op.condition, qc)
+            cond = condition_to_c(op.condition, qc, indent, temp_id)
             print(f"{indent}if ({cond}) {{")
-            emit(op.blocks[0].data, qc, indent + "    ")
+            emit(op.blocks[0].data, qc, indent + "    ", temp_id)
             if len(op.blocks) > 1 and op.blocks[1] is not None:
                 print(f"{indent}}} else {{")
-                emit(op.blocks[1].data, qc, indent + "    ")
+                emit(op.blocks[1].data, qc, indent + "    ", temp_id)
             print(f"{indent}}}")
         elif isinstance(op, WhileLoopOp):
-            cond = condition_to_c(op.condition, qc)
-            print(f"{indent}while ({cond}) {{")
-            emit(op.blocks[0].data, qc, indent + "    ")
+            print(f"{indent}while (1) {{")
+            cond = condition_to_c(op.condition, qc, indent + "    ", temp_id)
+            print(f"{indent}    if (!({cond})) {{")
+            print(f"{indent}        break;")
+            print(f"{indent}    }}")
+            emit(op.blocks[0].data, qc, indent + "    ", temp_id)
             print(f"{indent}}}")
         elif isinstance(op, ForLoopOp):
             sequence = op.params[0]
@@ -157,7 +165,7 @@ def emit(instructions, qc, indent: str = ""):
                     f"{indent}for (int {loop_var} = 0; {loop_var} < {count}; ++{loop_var}) {{",
                 )
 
-            emit(op.blocks[0].data, qc, indent + "    ")
+            emit(op.blocks[0].data, qc, indent + "    ", temp_id)
             print(f"{indent}}}")
         elif isinstance(op, Barrier):
             qubits_str = ", ".join(str(n) for n in qubit_num_list)
@@ -187,7 +195,7 @@ def emit(instructions, qc, indent: str = ""):
             args.append(c_int_array(ctrl_qubit_num_list))
             args_str = ", ".join(args)
 
-            print(f"{indent}qcs_simulator_gate_{base_gate_name}({args_str});")
+            print(f"{indent}QCS_CHECK(qcs_simulator_gate_{base_gate_name}({args_str}));")
 
 
 def circuit_to_c(qc) -> None:
@@ -198,17 +206,21 @@ def circuit_to_c(qc) -> None:
     print("#include <stddef.h>")
     print("#include <qcs.h>")
     print()
-    print(f"static const unsigned int num_qubits = {num_qubits};")
-    print(f"static const unsigned int num_clbits = {num_clbits};")
+    print(f"static const bit_num_t num_qubits = {num_qubits};")
+    print(f"static const bit_num_t num_clbits = {num_clbits};")
     print()
-    print("void circuit_init(qcs_simulator* sim) {")
-    print("    qcs_simulator_set_num_qubits(sim, num_qubits);")
-    print("    qcs_simulator_set_num_clbits(sim, num_clbits);")
+    print("#define QCS_CHECK(call) do { int qcs_status = (call); if (qcs_status != 0) return qcs_status; } while (0)")
+    print()
+    print("int circuit_init(qcs_simulator* sim) {")
+    print("    QCS_CHECK(qcs_simulator_set_num_qubits(sim, num_qubits));")
+    print("    QCS_CHECK(qcs_simulator_set_num_clbits(sim, num_clbits));")
+    print("    return 0;")
     print("}")
     print()
-    print("void circuit_run(qcs_simulator* sim) {")
+    print("int circuit_run(qcs_simulator* sim) {")
     emit(qc.data, qc, "    ")
     print()
+    print("    return 0;")
     print("}")
 
 
